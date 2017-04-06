@@ -1,0 +1,37 @@
+---
+title: "China Embassy in US"
+author: "Guang Yang"
+date: "April 5, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r map}
+library(leaflet)
+EmbLatLong<-data.frame(
+  lat=c(38.942653,40.761954,41.893827,37.784673,34.065686,29.741537),
+  lng=c(-77.066589,-74.000298,-87.627303,-122.427613,-118.290441,-95.390587)
+  
+)
+EmbSites<-c(
+  "<a href='http://www.china-embassy.org/eng/hzqz/default.htm'>Chinese Embassy in USA</a>",
+  "<a href='http://newyork.china-consulate.org/eng'>Consulate in New York</a>",
+    "<a href='http://www.chinaconsulatechicago.org/eng'>Consulate in Chicago</a>",
+     "<a href='http://www.chinaconsulatesf.org/eng'>Consulate in San Francisco</a>",
+  "<a href='http://losangeles.china-consulate.org/eng'>Consulate in Los Angeles</a>",
+  "<a href='http://houston.china-consulate.org/eng'>Consulate in Houston</a>"
+)
+EmbIcon<-makeIcon(
+  iconUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/National_Emblem_of_the_People%27s_Republic_of_China.svg/943px-National_Emblem_of_the_People%27s_Republic_of_China.svg.png",
+  iconWidth = 31*215/230, iconHeight = 31,
+iconAnchorX = 31*215/230/2, iconAnchorY = 16
+)
+EmbLatLong%>%
+  leaflet()%>%
+  addTiles()%>%
+  addMarkers(icon=EmbIcon,popup=EmbSites)
+```
