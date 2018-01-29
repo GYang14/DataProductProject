@@ -276,7 +276,7 @@ LC.Raw.Smmry <-
     smmry <- sqldf(
       "select
       case when purpose in ('wedding','renewable_energy','house','educational') then 'other'
-      else purpose end as purpose_grp
+      else purpose end as purpose
       ,addr_state
       ,issue_date
       ,issue_year
