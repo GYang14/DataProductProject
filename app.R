@@ -98,7 +98,14 @@ ui <-  navbarPage(
           plotlyOutput("plot3"),
           plotlyOutput("plot4")
           
-        )))
+        ),
+        tabPanel(
+          "Summary Download", 
+          downloadButton("downloadData", "Download"),
+          tableOutput("table")
+          
+        )
+        ))
       )
       
     )
@@ -319,7 +326,17 @@ server <- function(input, output) {
         print("Filters Resulting Empty Set, Please Change Filters")
 
     })
-
+    output$table <- renderTable({
+      dataInput()[1:min(100,nrow(dataInput())),]
+    })
+    output$downloadData <- downloadHandler(
+      filename = function() {
+       "summary.csv"
+      },
+      content = function(file) {
+        write.csv(dataInput(), file, row.names = FALSE)
+      }
+    )
   
 
   
