@@ -2,7 +2,6 @@
 library(data.table)# for easy manipulation of data table
 library(sqldf)
 library(lubridate)
-library(lubridate)
 library(ggplot2)
 library(scales)
 library(fiftystater)
@@ -10,18 +9,23 @@ library(cdlTools)
 library(LendingClub)
 library(shiny)
 library(repmis)
+library(plotly)
 
 ####Personal Setup####
 
-#setwd("C:/Users/yguan/Desktop/DataScienceApplication/LendingClub")
-#source_data("https://github.com/GYang14/DataProductProject/blob/gh-pages/smmry_20072014.Rda?raw=true")
-source_data("https://github.com/GYang14/DataProductProject/blob/gh-pages/smmry_2015.Rda?raw=true")
-source_data("https://github.com/GYang14/DataProductProject/blob/gh-pages/smmry_2016.Rda?raw=true")
-source_data("https://github.com/GYang14/DataProductProject/blob/gh-pages/smmry_2017.Rda?raw=true")
+
+#source_data("https://github.com/GYang14/DataProductProject/blob/gh-pages/smmry_2015.Rda?raw=true")
+#source_data("https://github.com/GYang14/DataProductProject/blob/gh-pages/smmry_2016.Rda?raw=true")
+#source_data("https://github.com/GYang14/DataProductProject/blob/gh-pages/smmry_2017.Rda?raw=true")
+
+setwd("U:/Documents/Professional EDU/DataScience/RStudio/LC/Competitor Research/LCInvestmentAdvisor")
+load("./smmry_2015.Rda")
+load("./smmry_2016.Rda")
+load("./smmry_2017.Rda")
 smmry<-rbind(smmry_2015,smmry_2016,smmry_2017)
 rm(smmry_2015,smmry_2016,smmry_2017)
 vintage<-sqldf("select distinct issue_year||issue_qtr as vintage from smmry
-            ")
+               ")
 vintage$vintage<-as.factor(vintage$vintage)
 
 # Define UI for application that draws a histogram
@@ -33,6 +37,7 @@ ui <-  navbarPage(
       titlePanel("Lending Club Historical Performance"),
       sidebarLayout(
         sidebarPanel(
+         
           h3("Loan Filter(Blank Means Overall)"),
           submitButton(text = "Refresh"),
           selectInput("vintage", label="Loan Vintage", 
@@ -81,14 +86,18 @@ ui <-  navbarPage(
                       choices=levels(smmry$Income_verified),
                       multiple = T,
                       selectize = TRUE)
-  
+          
           
           
         ),
         mainPanel(tabsetPanel(tabPanel(
           "Standard Plot", 
-          plotOutput("plot1"),
-          verbatimTextOutput("test")
+          h4(textOutput("test")),
+          plotlyOutput("plot1"),
+          plotlyOutput("plot2"),
+          plotlyOutput("plot3"),
+          plotlyOutput("plot4")
+          
         )))
       )
       
@@ -97,6 +106,7 @@ ui <-  navbarPage(
 )
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+
   dataInput <- reactive({
     progress <- shiny::Progress$new()
     on.exit(progress$close())
@@ -162,9 +172,17 @@ server <- function(input, output) {
     
     tmp<-sqldf(
       "select 
-      issue_year,
-      sum(amnt_inv_x_int_rate)/sum(investor_funded_amt) as int_rate,
-      sum(amnt_inv_x_SAR)/sum(investor_funded_amt) as SAR
+      a.issue_year,
+      a.issue_qtr,  
+      a.addr_state,
+      a.purpose,
+     case when a.grade in ('A','B','C','D','E') then a.grade
+            else 'F+G' end as grade,
+      a.loan_status,
+      sum(loan_amnt) as loan_amnt,
+      sum(amnt_inv_x_int_rate) as amnt_inv_x_int_rate,
+      sum(investor_funded_amt) as investor_funded_amt,
+      sum(amnt_inv_x_SAR) as amnt_inv_x_SAR
       from smmry a
       inner join selected_vintage b
       on a.issue_year||a.issue_qtr=b.vintage
@@ -193,36 +211,119 @@ server <- function(input, output) {
       inner join selected_incv m
       on a.Income_verified = m.Income_verified
       
-      group by 1
+      group by 1,2,3,4,5,6
       ")
     tmp
   })
-  facet_class_bar_plot<-function(data,x,facet,y,class,title,xlab,ylab,yformat=dollar_format()){
+
+ 
+  facet_class_bar_plot<-function(data,x,facet,y,class,position="stack",title,xlab="",xsize=8,ylab="",classlab=class,yformat=dollar_format()){
     tmp<-data[,c(x,facet,y,class)]
     names(tmp)<-c("x","facet","y","class")
     theme_set(theme_bw())
-    ggplot(tmp, aes(x = x, y=y)) + 
-      geom_bar(stat="identity", width=.5, aes(fill=class)) + 
+    p<-ggplot(tmp, aes(x = x, y=y)) + 
+      geom_bar(stat="identity",position=position, width=.5, aes(fill=class)) + 
       facet_grid(.~ facet, space="free_x", scales="free_x", switch="x") +
-      labs(title=title,x=xlab,y=ylab) + 
-      theme(axis.text.x = element_text(angle=65, vjust=0.6),strip.placement = "outside",
+      labs(title=title,x=xlab,y=ylab,fill = classlab) + 
+      theme(axis.text.y = element_text(angle=90),axis.text.x = element_text(angle=0, size =xsize,hjust = 0.5),strip.placement = "outside",
+            legend.title = element_text(angle=0, size =xsize*1.5),
             panel.spacing=unit(0,"cm"))+
       scale_y_continuous( label=yformat)
+    return(p)
   }
   
   
-  output$plot1 <- renderPlot({
-    
-    
-    data<-melt(dataInput(),id.vars='issue_year')  
-    
-    
-    ggplot(data, aes(issue_year, value)) +   
-      geom_bar(aes(fill = variable), position = "dodge", stat="identity")+scale_y_continuous(label=percent)+theme_gray()
+
+  
+  output$plot1 <- renderPlotly({
+    if(nrow(dataInput())>0){
+      progress <- shiny::Progress$new()
+      on.exit(progress$close())
+      progress$set(message = "Plotting")
+    data<-dataInput()
+    dollar_by_issue<-sqldf("select issue_year,issue_qtr,grade,sum(loan_amnt/1000000) as loan_amount from data group by 1,2,3")
+    p<-facet_class_bar_plot(dollar_by_issue,x="issue_qtr",facet="issue_year",y="loan_amount",class="grade",title="Loan Issuance (in $Million) by Issuance Date and Risk Grade",xlab = "",ylab="",classlab="Grade")
+    ggplotly(p)
+    }
+    else{
+      return(NULL)
+    }
   })
+
+  output$plot2 <- renderPlotly({
+    if(nrow(dataInput())>0){
+      progress <- shiny::Progress$new()
+      on.exit(progress$close())
+      progress$set(message = "Plotting")
+    data<-dataInput()
+    loan_by_state<-
+      sqldf("select issue_year,addr_state,sum(loan_amnt/1000000.0) as loan_amnt_in_M from data group by 1,2")
+    loan_by_state$issue_year<-as.factor(loan_by_state$issue_year)
+    loan_by_state$facet<-""
+    p<-facet_class_bar_plot(loan_by_state,x="addr_state",facet="facet",y="loan_amnt_in_M",class="issue_year",title="Loan Issuance by State",xsize=6.5,classlab="Issuance Year")
+    
+    ggplotly(p)
+    }
+    else{
+      return(NULL)
+    }
+    
+  })
+  output$plot3 <- renderPlotly({
+    if(nrow(dataInput())>0){
+      progress <- shiny::Progress$new()
+      on.exit(progress$close())
+      progress$set(message = "Plotting")
+      
+    data<-dataInput()
+    loan_by_issue_grade<-sqldf("select issue_year,grade,loan_status,sum(loan_amnt) as loan_amnt from data group by 1,2,3")
+    loan_by_issue_grade<-group_by(loan_by_issue_grade,issue_year,grade) %>% mutate(loan_pct = loan_amnt/sum(loan_amnt))
+    loan_by_issue_grade$loan_status<-as.character(loan_by_issue_grade$loan_status)
+    loan_by_issue_grade$loan_status<-factor(loan_by_issue_grade$loan_status,levels = c("Current","In Grace Period","Fully Paid","Late (16-30 days)","Late (31-120 days)","Default","Charged Off"))
+    p<-facet_class_bar_plot(loan_by_issue_grade,x="grade",facet="issue_year",y="loan_pct",class="loan_status",title="Loan Origination Amount Mix by Latest Loan Status",classlab="Latest Loan Status",yformat=percent)
+    ggplotly(p)
+    } else{
+      return(NULL)
+    }
+  })
+  output$plot4 <- renderPlotly({
+    if(nrow(dataInput())>0){
+      progress <- shiny::Progress$new()
+      on.exit(progress$close())
+      progress$set(message = "Plotting")
+      
+    data<-dataInput()
+    hist_return_by_grade<-
+      sqldf("
+            select 
+            issue_year,
+            grade,
+            sum(amnt_inv_x_int_rate)/sum(investor_funded_amt) as 'Interest Rate',
+            sum(amnt_inv_x_SAR)/sum(investor_funded_amt) as 'Risk Adjusted Return'
+            from data
+            group by 1,2
+            ")
+    hist_return_by_grade.m<-melt(hist_return_by_grade,id.vars=c('issue_year','grade'))
+    p<-facet_class_bar_plot(hist_return_by_grade.m,x="grade",facet="issue_year",y="value",class="variable",position="dodge",title="Interest Rate and Risk Adjusted Return",xlab = "",ylab="",classlab="Rate",yformat=percent_format())
+    ggplotly(p)
+    } else{
+      return(NULL)
+    }
+    
+    
+  })
+
+
+    output$test <- renderText({
+      if(nrow(dataInput())==0)
+        print("Filters Resulting Empty Set, Please Change Filters")
+
+    })
+
+  
+
   
 }
 
 # Run the application 
 shinyApp(ui = ui, server = server)
-
