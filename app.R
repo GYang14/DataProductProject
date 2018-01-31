@@ -401,12 +401,7 @@ server <- function(input, output) {
       print("Filters Resulting Empty Set, Please Change Filters")
     
   })
-  output$table <- renderTable({
-    progress <- shiny::Progress$new()
-    on.exit(progress$close())
-    progress$set(message = "Writing")
-    dataInput()[1:min(100,nrow(dataInput())),]
-  })
+
   output$summary1 <- renderTable({
     progress <- shiny::Progress$new()
     on.exit(progress$close())
@@ -442,7 +437,7 @@ server <- function(input, output) {
     on.exit(progress$close())
     progress$set(message = "Calculating Summary 2")
     data<-dataInput()
-    smmry<-sqldf("select grade,
+    smmry<-sqldf("select grade as 'GRADE',
                  sum(amnt_inv_x_SAR)/sum(investor_funded_amt) as 'Risk Adjusted Return',
                  sum(amnt_inv_x_int_rate)/sum(investor_funded_amt) as 'Interest Rate',
                  sum(case when loan_status in ('Charged Off') then loan_amnt-total_rec_prncp else 0 end)/
@@ -473,7 +468,7 @@ server <- function(input, output) {
     on.exit(progress$close())
     progress$set(message = "Calculating Summary 3")
     data<-dataInput()
-    smmry<-sqldf("select purpose,
+    smmry<-sqldf("select purpose as 'PURPOSE',
                  sum(amnt_inv_x_SAR)/sum(investor_funded_amt) as 'Risk Adjusted Return',
                  sum(amnt_inv_x_int_rate)/sum(investor_funded_amt) as 'Interest Rate',
                  sum(case when loan_status in ('Charged Off') then loan_amnt-total_rec_prncp else 0 end)/
@@ -504,7 +499,7 @@ server <- function(input, output) {
     on.exit(progress$close())
     progress$set(message = "Calculating Summary 4")
     data<-dataInput()
-    smmry<-sqldf("select issue_year,
+    smmry<-sqldf("select issue_year as 'ISSUE YEAR',
                  sum(amnt_inv_x_SAR)/sum(investor_funded_amt) as 'Risk Adjusted Return',
                  sum(amnt_inv_x_int_rate)/sum(investor_funded_amt) as 'Interest Rate',
                  sum(case when loan_status in ('Charged Off') then loan_amnt-total_rec_prncp else 0 end)/
@@ -535,7 +530,7 @@ server <- function(input, output) {
     on.exit(progress$close())
     progress$set(message = "Calculating Summary 5")
     data<-dataInput()
-    smmry<-sqldf("select term,
+    smmry<-sqldf("select term as 'TERM',
                  sum(amnt_inv_x_SAR)/sum(investor_funded_amt) as 'Risk Adjusted Return',
                  sum(amnt_inv_x_int_rate)/sum(investor_funded_amt) as 'Interest Rate',
                  sum(case when loan_status in ('Charged Off') then loan_amnt-total_rec_prncp else 0 end)/
