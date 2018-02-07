@@ -207,7 +207,7 @@ ui <- fluidPage(
       textInput(inputId = "LCid",label="Account ID"),
       passwordInput(inputId = "API", label="API"),
       fluidPage(br(),p(" "),
-      submitButton(text = "Refresh")
+      submitButton(text = "Login")
       )),
       
         
